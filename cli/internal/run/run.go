@@ -1024,8 +1024,9 @@ func (e *execContext) exec(ctx gocontext.Context, packageTask *nodes.PackageTask
 
 func (g *completeGraph) getPackageTaskVisitor(ctx gocontext.Context, visitor func(ctx gocontext.Context, packageTask *nodes.PackageTask) error) func(taskID string) error {
 	return func(taskID string) error {
-
+		fmt.Printf("getPackageTaskVisitor()\n")
 		name, task := util.GetPackageTaskFromId(taskID)
+
 		pkg, ok := g.PackageInfos[name]
 		if !ok {
 			return fmt.Errorf("cannot find package %v for task %v", name, taskID)
@@ -1033,6 +1034,11 @@ func (g *completeGraph) getPackageTaskVisitor(ctx gocontext.Context, visitor fun
 
 		// first check for package-tasks
 		taskDefinition, ok := g.Pipeline[fmt.Sprintf("%v", taskID)]
+
+		fmt.Printf("\t taskID: %#v\n", taskID)
+		fmt.Printf("\t task: %#v\n", task)
+		fmt.Printf("\t Pipeline:\n\t\t%#v\n", g.Pipeline)
+		fmt.Printf("\t taskDefintion (looked up with taskID):\n\t\t%#v\n", taskDefinition)
 		if !ok {
 			// then check for regular tasks
 			fallbackTaskDefinition, notcool := g.Pipeline[task]
@@ -1041,6 +1047,7 @@ func (g *completeGraph) getPackageTaskVisitor(ctx gocontext.Context, visitor fun
 				return nil
 			}
 			// override if we need to...
+			fmt.Printf("\t fallbackTaskDefinition (looked up with task) %#v\n", fallbackTaskDefinition)
 			taskDefinition = fallbackTaskDefinition
 		}
 		return visitor(ctx, &nodes.PackageTask{

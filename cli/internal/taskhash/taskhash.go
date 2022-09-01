@@ -67,7 +67,8 @@ type packageFileHashKey string
 // hashes the inputs for a packageTask
 func (pfs packageFileSpec) ToKey() packageFileHashKey {
 	sort.Strings(pfs.inputs)
-	return packageFileHashKey(fmt.Sprintf("%v#%v", pfs.pkg, strings.Join(pfs.inputs, "!")))
+	xx := fmt.Sprintf("%v#%v", pfs.pkg, strings.Join(pfs.inputs, "!"))
+	return packageFileHashKey(xx)
 }
 
 func safeCompileIgnoreFile(filepath string) (*gitignore.GitIgnore, error) {
@@ -157,9 +158,11 @@ type packageFileHashes map[packageFileHashKey]string
 // CalculateFileHashes hashes each unique package-inputs combination that is present
 // in the task graph. Must be called before calculating task hashes.
 func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, repoRoot turbopath.AbsolutePath) error {
+	fmt.Printf("CalculateFileHashes()\n")
 	hashTasks := make(util.Set)
 
-	for _, v := range allTasks {
+	for i, v := range allTasks {
+		fmt.Printf("\ttask %d: %v\n", i, v)
 		taskID, ok := v.(string)
 		if !ok {
 			return fmt.Errorf("unknown task %v", taskID)
@@ -169,6 +172,7 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 		}
 		pkgName, _ := util.GetPackageTaskFromId(taskID)
 		if pkgName == th.rootNode {
+			fmt.Printf("\tContinue\n")
 			continue
 		}
 
@@ -177,10 +181,15 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 			return fmt.Errorf("missing pipeline entry %v", taskID)
 		}
 
+		taskDefinition.Inputs = append(taskDefinition.Inputs, "./package.json")
+
 		pfs := &packageFileSpec{
 			pkg:    pkgName,
 			inputs: taskDefinition.Inputs,
 		}
+
+		fmt.Printf("\ttaskDefinition.Inputs: %v\n", taskDefinition.Inputs)
+		fmt.Printf("\tpfs.inputs: %v\n", pfs.inputs)
 
 		hashTasks.Add(pfs)
 	}
@@ -202,6 +211,8 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 				}
 				th.mu.Lock()
 				pfsKey := packageFileSpec.ToKey()
+				fmt.Printf("\tadding to hashes\n")
+				fmt.Printf("\t\t\"%v\": %v\n", pfsKey, hash)
 				hashes[pfsKey] = hash
 				th.mu.Unlock()
 			}
@@ -217,6 +228,8 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 		return err
 	}
 	th.packageInputsHashes = hashes
+
+	fmt.Printf("\tth.packageInputsHashes: %v\n", th.packageInputsHashes)
 	return nil
 }
 
@@ -263,8 +276,23 @@ func (th *Tracker) calculateDependencyHashes(dependencySet dag.Set) ([]string, e
 // that it has previously been called on its task-graph dependencies. File hashes must be calculated
 // first.
 func (th *Tracker) CalculateTaskHash(packageTask *nodes.PackageTask, dependencySet dag.Set, args []string) (string, error) {
+	fmt.Printf("CalculateTaskHash(): taskID: %v\n", packageTask.TaskID)
+
+	fmt.Printf("\ttaskDefinition.Inputs: %v\n", packageTask.TaskDefinition.Inputs)
 	pfs := specFromPackageTask(packageTask)
+	fmt.Printf("\tpfs.inputs: %v\n", pfs.inputs)
 	pkgFileHashKey := pfs.ToKey()
+
+	fmt.Printf("\tpkgFileHashKey: %s\n", pkgFileHashKey)
+
+	fmt.Printf("\tScripts\n")
+	for scriptName, script := range packageTask.Pkg.Scripts {
+		fmt.Printf("\t\t%s: %s\n", scriptName, script)
+	}
+
+	for _, x := range th.packageInputsHashes {
+		fmt.Printf("\tpackage input hashes: %s\n", x)
+	}
 
 	hashOfFiles, ok := th.packageInputsHashes[pkgFileHashKey]
 	if !ok {
