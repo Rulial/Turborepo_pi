@@ -1038,7 +1038,8 @@ func (g *completeGraph) getPackageTaskVisitor(ctx gocontext.Context, visitor fun
 		fmt.Printf("\t taskID: %#v\n", taskID)
 		fmt.Printf("\t task: %#v\n", task)
 		fmt.Printf("\t Pipeline:\n\t\t%#v\n", g.Pipeline)
-		fmt.Printf("\t taskDefintion (looked up with taskID):\n\t\t%#v\n", taskDefinition)
+		fmt.Printf("----------------------------\n")
+		fmt.Printf("\t taskDefintion (looked up with taskID \"%#v\"):\n\t\t%#v\n", taskID, taskDefinition)
 		if !ok {
 			// then check for regular tasks
 			fallbackTaskDefinition, notcool := g.Pipeline[task]
@@ -1047,7 +1048,7 @@ func (g *completeGraph) getPackageTaskVisitor(ctx gocontext.Context, visitor fun
 				return nil
 			}
 			// override if we need to...
-			fmt.Printf("\t fallbackTaskDefinition (looked up with task) %#v\n", fallbackTaskDefinition)
+			fmt.Printf("\t fallbackTaskDefinition (looked up with task \"%#v\") %#v\n", task, fallbackTaskDefinition)
 			taskDefinition = fallbackTaskDefinition
 		}
 		return visitor(ctx, &nodes.PackageTask{

@@ -159,6 +159,7 @@ type packageFileHashes map[packageFileHashKey]string
 // in the task graph. Must be called before calculating task hashes.
 func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, repoRoot turbopath.AbsolutePath) error {
 	fmt.Printf("CalculateFileHashes()\n")
+
 	hashTasks := make(util.Set)
 
 	for i, v := range allTasks {
@@ -172,7 +173,6 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 		}
 		pkgName, _ := util.GetPackageTaskFromId(taskID)
 		if pkgName == th.rootNode {
-			fmt.Printf("\tContinue\n")
 			continue
 		}
 
@@ -181,18 +181,17 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 			return fmt.Errorf("missing pipeline entry %v", taskID)
 		}
 
-		taskDefinition.Inputs = append(taskDefinition.Inputs, "./package.json")
+		// taskDefinition.Inputs = append(taskDefinition.Inputs, "./package.json")
 
 		pfs := &packageFileSpec{
 			pkg:    pkgName,
 			inputs: taskDefinition.Inputs,
 		}
 
-		fmt.Printf("\ttaskDefinition.Inputs: %v\n", taskDefinition.Inputs)
-		fmt.Printf("\tpfs.inputs: %v\n", pfs.inputs)
-
 		hashTasks.Add(pfs)
 	}
+
+	fmt.Printf("\thashTasks\n\t\t %#v\n", hashTasks)
 
 	hashes := make(map[packageFileHashKey]string)
 	hashQueue := make(chan *packageFileSpec, workerCount)
@@ -211,14 +210,14 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 				}
 				th.mu.Lock()
 				pfsKey := packageFileSpec.ToKey()
-				fmt.Printf("\tadding to hashes\n")
-				fmt.Printf("\t\t\"%v\": %v\n", pfsKey, hash)
+				fmt.Printf("\tadding key \"%#v\" with value \"%#v\"\n", pfsKey, hash)
 				hashes[pfsKey] = hash
 				th.mu.Unlock()
 			}
 			return nil
 		})
 	}
+
 	for ht := range hashTasks {
 		hashQueue <- ht.(*packageFileSpec)
 	}
@@ -229,7 +228,7 @@ func (th *Tracker) CalculateFileHashes(allTasks []dag.Vertex, workerCount int, r
 	}
 	th.packageInputsHashes = hashes
 
-	fmt.Printf("\tth.packageInputsHashes: %v\n", th.packageInputsHashes)
+	fmt.Printf("\t tracker:\n\t\t%#v\n", th)
 	return nil
 }
 
